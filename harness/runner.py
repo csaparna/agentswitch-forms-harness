@@ -162,7 +162,10 @@ def run_harness(output_path: str = "results.json") -> Dict[str, Any]:
     try:
         loc_res = client.call_tool("endpoint.storefront.locale", {})
         if not loc_res.get("is_error"):
-            locale_data = loc_res.get("result", {})
+            raw_loc = loc_res.get("result", {})
+            locale_data = raw_loc.copy() if isinstance(raw_loc, dict) else {}
+            if isinstance(raw_loc.get("data"), dict):
+                locale_data.update(raw_loc["data"])
             cc = locale_data.get("country_code", "IN").upper()
             regime = locale_data.get("tax_regime", "GST")
             record(
@@ -233,7 +236,10 @@ def run_harness(output_path: str = "results.json") -> Dict[str, Any]:
 
         # Database readback: verify the form exists and status is published
         verif = client.call_tool("Form.get", {"id": created_form_id}) if created_form_id else {}
-        form_live_status = verif.get("result", {}).get("status")
+        res_verif = verif.get("result", {})
+        form_live_status = res_verif.get("status") if isinstance(res_verif, dict) else None
+        if not form_live_status and isinstance(res_verif.get("data"), dict):
+            form_live_status = res_verif["data"].get("status")
         db_verified = form_live_status == "published"
 
         record(
